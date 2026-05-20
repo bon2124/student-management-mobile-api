@@ -1,77 +1,149 @@
 package com.example.student_management;
 
-import android.os.Bundle;
-
-import com.google.android.material.snackbar.Snackbar;
-
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
-import android.view.View;
+import android.content.Intent;
+import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.TextView;
+import android.widget.Toast;
 
-import androidx.navigation.NavController;
-import androidx.navigation.Navigation;
-import androidx.navigation.ui.AppBarConfiguration;
-import androidx.navigation.ui.NavigationUI;
+import com.example.student_management.api.RetrofitClient;
+import com.example.student_management.model.Student;
 
-import com.example.student_management.databinding.ActivityMainBinding;
+import java.util.ArrayList;
+import java.util.List;
 
-import android.view.Menu;
-import android.view.MenuItem;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class MainActivity extends AppCompatActivity {
 
-    private AppBarConfiguration appBarConfiguration;
-    private ActivityMainBinding binding;
+    private RecyclerView      recyclerView;
+    private StudentAdapter    adapter;
+    private List<Student>     danhSachGoc = new ArrayList<>();
+    private EditText          etSearch;
+    private TextView          tvCount;
+    private ImageView         fabAdd;
+
+    // Định nghĩa các Request Code để phân biệt các màn hình quay về
+    private static final int REQUEST_CODE_ADD    = 100;
+    private static final int REQUEST_CODE_DETAIL = 200;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
 
-        binding = ActivityMainBinding.inflate(getLayoutInflater());
-        setContentView(binding.getRoot());
+        // Ánh xạ giao diện mới chuẩn bo góc phẳng
+        recyclerView = findViewById(R.id.recyclerView);
+        etSearch     = findViewById(R.id.etSearch);
+        tvCount      = findViewById(R.id.tvCount);
+        fabAdd       = findViewById(R.id.fabAdd);
 
-        setSupportActionBar(binding.toolbar);
+        // Cấu hình RecyclerView hiển thị danh sách theo chiều dọc
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
-        NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main);
-        appBarConfiguration = new AppBarConfiguration.Builder(navController.getGraph()).build();
-        NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
+        // Khởi tạo Adapter và xử lý sự kiện click vào từng Sinh viên
+        adapter = new StudentAdapter(this, danhSachGoc, student -> {
+            Intent intent = new Intent(MainActivity.this, StudentDetailActivity.class);
+            intent.putExtra("CHOSEN_STUDENT", student);
+            // 🛠️ ĐÃ SỬA: Chuyển sang dùng startActivityForResult để lắng nghe tín hiệu Xóa/Sửa từ DetailActivity trả về
+            startActivityForResult(intent, REQUEST_CODE_DETAIL);
+        });
+        recyclerView.setAdapter(adapter);
 
-        binding.fab.setOnClickListener(new View.OnClickListener() {
+        // Lắng nghe sự kiện thanh tìm kiếm thay đổi văn bản liên tục (Local Search)
+        etSearch.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int i, int i1, int i2) {}
+            @Override public void afterTextChanged(Editable s) {}
+
             @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAnchorView(R.id.fab)
-                        .setAction("Action", null).show();
+            public void onTextChanged(CharSequence s, int i, int i1, int i2) {
+                timKiem(s.toString());
+            }
+        });
+
+        // Nút thêm sinh viên mới (+)
+        fabAdd.setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, AddStudentActivity.class);
+            startActivityForResult(intent, REQUEST_CODE_ADD);
+        });
+
+        // Khởi động ứng dụng -> Load danh sách sinh viên từ Server XAMPP về ngay
+        layDanhSach();
+    }
+
+    // Hàm gọi Web API PHP lấy danh sách sinh viên mới nhất
+    private void layDanhSach() {
+        tvCount.setText("Đang tải...");
+
+        Call<List<Student>> call = RetrofitClient.getInstance()
+                .getApiService()
+                .getAllStudents();
+
+        call.enqueue(new Callback<List<Student>>() {
+            @Override
+            public void onResponse(Call<List<Student>> call, Response<List<Student>> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    danhSachGoc.clear();
+                    danhSachGoc.addAll(response.body());
+                    adapter.updateList(danhSachGoc);
+                    tvCount.setText("Tổng: " + danhSachGoc.size() + " sinh viên");
+                } else {
+                    tvCount.setText("❌ Không thể lấy dữ liệu từ server");
+                }
+            }
+
+            @Override
+            public void onFailure(Call<List<Student>> call, Throwable t) {
+                tvCount.setText("❌ Lỗi kết nối");
+                Toast.makeText(MainActivity.this,
+                        "Lỗi kết nối server: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }
 
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
+    // Xử lý bộ lọc tìm kiếm cục bộ (Local offline search)
+    private void timKiem(String keyword) {
+        if (keyword.isEmpty()) {
+            adapter.updateList(danhSachGoc);
+            tvCount.setText("Tổng: " + danhSachGoc.size() + " sinh viên");
+            return;
         }
 
-        return super.onOptionsItemSelected(item);
+        List<Student> ketQua = new ArrayList<>();
+        String query = keyword.toLowerCase().trim();
+
+        for (Student s : danhSachGoc) {
+            // Kiểm tra điều kiện phòng hờ các trường dữ liệu bị trống (null) từ MySQL
+            boolean matchesName = s.getName() != null && s.getName().toLowerCase().contains(query);
+            boolean matchesId = s.getId() != null && s.getId().contains(query);
+            boolean matchesClass = s.getClassName() != null && s.getClassName().toLowerCase().contains(query);
+
+            if (matchesName || matchesId || matchesClass) {
+                ketQua.add(s);
+            }
+        }
+        adapter.updateList(ketQua);
+        tvCount.setText("Tìm thấy: " + ketQua.size() + " sinh viên");
     }
 
+    // 🛠️ HÀM NHẬN PHẢN HỒI: Tự động kích hoạt khi màn hình Add hoặc Detail đóng lại với tín hiệu thành công
     @Override
-    public boolean onSupportNavigateUp() {
-        NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main);
-        return NavigationUI.navigateUp(navController, appBarConfiguration)
-                || super.onSupportNavigateUp();
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        // Bất kể là vừa Thêm mới (REQUEST_CODE_ADD) hay xem Chi tiết rồi Xóa/Sửa (REQUEST_CODE_DETAIL)
+        // Cứ hễ bên kia báo sửa đổi thành công (RESULT_OK) -> Tự động tải lại danh sách mới nhất từ Database
+        if (resultCode == RESULT_OK) {
+            layDanhSach();
+        }
     }
 }
