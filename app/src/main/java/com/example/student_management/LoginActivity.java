@@ -12,6 +12,8 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.student_management.api.RetrofitClient;
+import com.example.student_management.api.TokenManager;
+import com.example.student_management.model.LoginRequest;
 import com.example.student_management.model.LoginResponse;
 
 import retrofit2.Call;
@@ -31,14 +33,12 @@ public class LoginActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 
-        // 1. Ánh xạ các thành phần giao diện mới bo góc phẳng
         etUsername       = findViewById(R.id.etUsername);
         etPassword       = findViewById(R.id.etPassword);
         btnLogin         = findViewById(R.id.btnLogin);
         ivTogglePassword = findViewById(R.id.ivTogglePassword);
         tvForgotPassword = findViewById(R.id.tvForgotPassword);
 
-        // 2. Xử lý chức năng Ẩn/Hiện mật khẩu bằng nút con mắt
         ivTogglePassword.setOnClickListener(v -> {
             if (isPasswordVisible) {
                 etPassword.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
@@ -52,7 +52,6 @@ public class LoginActivity extends AppCompatActivity {
             etPassword.setSelection(etPassword.getText().length());
         });
 
-        // 3. 🛠️ ĐÃ SỬA: Gọi API qua Retrofit để check tài khoản từ Database XAMPP
         btnLogin.setOnClickListener(v -> dangNhapHeThong());
     }
 
@@ -69,12 +68,12 @@ public class LoginActivity extends AppCompatActivity {
             return;
         }
 
-        // Tối ưu trạng thái nút bấm chống click trùng lặp
         btnLogin.setEnabled(false);
         btnLogin.setText("Đang đăng nhập...");
 
-        // Gửi request lên server PHP thông qua RetrofitClient
-        Call<LoginResponse> call = RetrofitClient.getInstance().getApiService().login(username, password);
+        LoginRequest loginRequest = new LoginRequest(username, password);
+        Call<LoginResponse> call = RetrofitClient.getInstance().getApiService().login(loginRequest);
+
         call.enqueue(new Callback<LoginResponse>() {
             @Override
             public void onResponse(Call<LoginResponse> call, Response<LoginResponse> response) {
@@ -84,18 +83,23 @@ public class LoginActivity extends AppCompatActivity {
                 if (response.isSuccessful() && response.body() != null) {
                     LoginResponse result = response.body();
                     if (result.isSuccess()) {
-                        // Đăng nhập đúng thông tin trên MySQL -> Điều hướng sang màn hình chính
-                        Toast.makeText(LoginActivity.this, " Đăng nhập thành công!", Toast.LENGTH_SHORT).show();
+                        // ✅ Lưu JWT Token vào TokenManager
+                        TokenManager.saveToken(result.getToken());
+
+                        Toast.makeText(LoginActivity.this, "🎉 Đăng nhập thành công!", Toast.LENGTH_SHORT).show();
                         Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                         intent.putExtra("username", result.getUsername());
                         startActivity(intent);
                         finish();
                     } else {
-                        // Trả về lỗi trực tiếp từ file login.php (Ví dụ: Sai tài khoản hoặc mật khẩu)
                         Toast.makeText(LoginActivity.this, "❌ " + result.getMessage(), Toast.LENGTH_LONG).show();
                     }
                 } else {
-                    Toast.makeText(LoginActivity.this, "❌ Lỗi: Server phản hồi không hợp lệ!", Toast.LENGTH_SHORT).show();
+                    if (response.code() == 401) {
+                        Toast.makeText(LoginActivity.this, "❌ Tài khoản hoặc mật khẩu không chính xác!", Toast.LENGTH_LONG).show();
+                    } else {
+                        Toast.makeText(LoginActivity.this, "❌ Đăng nhập thất bại! Lỗi hệ thống.", Toast.LENGTH_SHORT).show();
+                    }
                 }
             }
 
@@ -103,7 +107,7 @@ public class LoginActivity extends AppCompatActivity {
             public void onFailure(Call<LoginResponse> call, Throwable t) {
                 btnLogin.setEnabled(true);
                 btnLogin.setText("Đăng nhập");
-                Toast.makeText(LoginActivity.this, "❌ Lỗi kết nối mạng: " + t.getMessage(), Toast.LENGTH_LONG).show();
+                Toast.makeText(LoginActivity.this, "❌ Lỗi kết nối: " + t.getMessage(), Toast.LENGTH_LONG).show();
             }
         });
     }

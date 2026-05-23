@@ -1,5 +1,6 @@
 package com.example.student_management.api;
 
+import com.example.student_management.model.LoginRequest;
 import com.example.student_management.model.LoginResponse;
 import com.example.student_management.model.Student;
 
@@ -8,48 +9,31 @@ import java.util.List;
 import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.http.Body;
-import retrofit2.http.Field;
-import retrofit2.http.FormUrlEncoded;
+import retrofit2.http.DELETE;
 import retrofit2.http.GET;
 import retrofit2.http.POST;
+import retrofit2.http.PUT;
+import retrofit2.http.Path;
 
 public interface ApiService {
 
-    // 1. Lấy danh sách sinh viên
-    @GET("get_students.php")
+    // 1. Lấy danh sách sinh viên (trả thẳng mảng)
+    @GET("students")
     Call<List<Student>> getAllStudents();
 
-    // 2. Đăng nhập hệ thống
-    @FormUrlEncoded
-    @POST("login.php")
-    Call<LoginResponse> login(
-            @Field("username") String username,
-            @Field("password") String password
-    );
+    // 2. Đăng nhập
+    @POST("auth/login")
+    Call<LoginResponse> login(@Body LoginRequest loginRequest);
 
-    // 3. Xóa sinh viên vĩnh viễn (Đã đồng bộ sang file delete_student.php và kiểu String id)
-    @FormUrlEncoded
-    @POST("delete_student.php")
-    Call<okhttp3.ResponseBody> deleteStudent(
-            @Field("id") String id
-    );
+    // 3. Xóa sinh viên
+    @DELETE("students/{id}")
+    Call<ResponseBody> deleteStudent(@Path("id") String id);
 
-    // 4. Cập nhật thông tin chi tiết sinh viên
-    @FormUrlEncoded
-    @POST("update_student.php")
-    Call<okhttp3.ResponseBody> updateStudent(
-            @Field("id")      String id,
-            @Field("name")    String name,
-            @Field("age")     String age,
-            @Field("email")   String email,
-            @Field("class")   String classCode,
-            @Field("address") String address,
-            @Field("phone")   String phone,
-            @Field("date")    String date,
-            @Field("sex")     String sex
-    );
+    // 4. Cập nhật sinh viên
+    @PUT("students/{id}")
+    Call<ResponseBody> updateStudent(@Path("id") String id, @Body Student student);
 
-    // 5. Thêm sinh viên mới (Gửi Object JSON thô qua @Body)
-    @POST("add_student.php")
+    // 5. Thêm sinh viên
+    @POST("students")
     Call<ResponseBody> addStudent(@Body Student student);
 }

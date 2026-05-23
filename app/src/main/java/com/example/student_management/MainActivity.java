@@ -25,14 +25,13 @@ import retrofit2.Response;
 
 public class MainActivity extends AppCompatActivity {
 
-    private RecyclerView      recyclerView;
-    private StudentAdapter    adapter;
-    private List<Student>     danhSachGoc = new ArrayList<>();
-    private EditText          etSearch;
-    private TextView          tvCount;
-    private ImageView         fabAdd;
+    private RecyclerView   recyclerView;
+    private StudentAdapter adapter;
+    private List<Student>  danhSachGoc = new ArrayList<>();
+    private EditText       etSearch;
+    private TextView       tvCount;
+    private ImageView      fabAdd;
 
-    // Định nghĩa các Request Code để phân biệt các màn hình quay về
     private static final int REQUEST_CODE_ADD    = 100;
     private static final int REQUEST_CODE_DETAIL = 200;
 
@@ -41,48 +40,39 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Ánh xạ giao diện mới chuẩn bo góc phẳng
         recyclerView = findViewById(R.id.recyclerView);
         etSearch     = findViewById(R.id.etSearch);
         tvCount      = findViewById(R.id.tvCount);
         fabAdd       = findViewById(R.id.fabAdd);
 
-        // Cấu hình RecyclerView hiển thị danh sách theo chiều dọc
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
-        // Khởi tạo Adapter và xử lý sự kiện click vào từng Sinh viên
-        adapter = new StudentAdapter(this, danhSachGoc, student -> {
+        adapter = new StudentAdapter(this, new ArrayList<>(), student -> {
             Intent intent = new Intent(MainActivity.this, StudentDetailActivity.class);
             intent.putExtra("CHOSEN_STUDENT", student);
-            // 🛠️ ĐÃ SỬA: Chuyển sang dùng startActivityForResult để lắng nghe tín hiệu Xóa/Sửa từ DetailActivity trả về
             startActivityForResult(intent, REQUEST_CODE_DETAIL);
         });
         recyclerView.setAdapter(adapter);
 
-        // Lắng nghe sự kiện thanh tìm kiếm thay đổi văn bản liên tục (Local Search)
         etSearch.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int i, int i1, int i2) {}
             @Override public void afterTextChanged(Editable s) {}
-
             @Override
             public void onTextChanged(CharSequence s, int i, int i1, int i2) {
                 timKiem(s.toString());
             }
         });
 
-        // Nút thêm sinh viên mới (+)
         fabAdd.setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, AddStudentActivity.class);
             startActivityForResult(intent, REQUEST_CODE_ADD);
         });
 
-        // Khởi động ứng dụng -> Load danh sách sinh viên từ Server XAMPP về ngay
         layDanhSach();
     }
 
-    // Hàm gọi Web API PHP lấy danh sách sinh viên mới nhất
     private void layDanhSach() {
-        tvCount.setText("Đang tải...");
+        tvCount.setText("Đang tải dữ liệu...");
 
         Call<List<Student>> call = RetrofitClient.getInstance()
                 .getApiService()
@@ -94,8 +84,18 @@ public class MainActivity extends AppCompatActivity {
                 if (response.isSuccessful() && response.body() != null) {
                     danhSachGoc.clear();
                     danhSachGoc.addAll(response.body());
-                    adapter.updateList(danhSachGoc);
-                    tvCount.setText("Tổng: " + danhSachGoc.size() + " sinh viên");
+
+                    if (etSearch.getText().toString().trim().isEmpty()) {
+                        adapter.updateList(new ArrayList<>(danhSachGoc));
+                        tvCount.setText("Tổng: " + danhSachGoc.size() + " sinh viên");
+                    } else {
+                        timKiem(etSearch.getText().toString());
+                    }
+                } else if (response.code() == 401 || response.code() == 403) {
+                    // Token hết hạn → về màn đăng nhập
+                    Toast.makeText(MainActivity.this, "Phiên đăng nhập hết hạn!", Toast.LENGTH_SHORT).show();
+                    startActivity(new Intent(MainActivity.this, LoginActivity.class));
+                    finish();
                 } else {
                     tvCount.setText("❌ Không thể lấy dữ liệu từ server");
                 }
@@ -103,17 +103,15 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onFailure(Call<List<Student>> call, Throwable t) {
-                tvCount.setText("❌ Lỗi kết nối");
-                Toast.makeText(MainActivity.this,
-                        "Lỗi kết nối server: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                tvCount.setText("❌ Lỗi kết nối API");
+                Toast.makeText(MainActivity.this, "Lỗi: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }
 
-    // Xử lý bộ lọc tìm kiếm cục bộ (Local offline search)
     private void timKiem(String keyword) {
         if (keyword.isEmpty()) {
-            adapter.updateList(danhSachGoc);
+            adapter.updateList(new ArrayList<>(danhSachGoc));
             tvCount.setText("Tổng: " + danhSachGoc.size() + " sinh viên");
             return;
         }
@@ -122,27 +120,20 @@ public class MainActivity extends AppCompatActivity {
         String query = keyword.toLowerCase().trim();
 
         for (Student s : danhSachGoc) {
-            // Kiểm tra điều kiện phòng hờ các trường dữ liệu bị trống (null) từ MySQL
-            boolean matchesName = s.getName() != null && s.getName().toLowerCase().contains(query);
-            boolean matchesId = s.getId() != null && s.getId().contains(query);
+            boolean matchesName  = s.getName() != null && s.getName().toLowerCase().contains(query);
+            boolean matchesCode  = s.getStudentCode() != null && s.getStudentCode().toLowerCase().contains(query);
             boolean matchesClass = s.getClassName() != null && s.getClassName().toLowerCase().contains(query);
-
-            if (matchesName || matchesId || matchesClass) {
-                ketQua.add(s);
-            }
+            if (matchesName || matchesCode || matchesClass) ketQua.add(s);
         }
         adapter.updateList(ketQua);
         tvCount.setText("Tìm thấy: " + ketQua.size() + " sinh viên");
     }
 
-    // 🛠️ HÀM NHẬN PHẢN HỒI: Tự động kích hoạt khi màn hình Add hoặc Detail đóng lại với tín hiệu thành công
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-
-        // Bất kể là vừa Thêm mới (REQUEST_CODE_ADD) hay xem Chi tiết rồi Xóa/Sửa (REQUEST_CODE_DETAIL)
-        // Cứ hễ bên kia báo sửa đổi thành công (RESULT_OK) -> Tự động tải lại danh sách mới nhất từ Database
         if (resultCode == RESULT_OK) {
+            if (etSearch != null) etSearch.setText("");
             layDanhSach();
         }
     }

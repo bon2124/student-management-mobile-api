@@ -15,19 +15,19 @@ import java.util.List;
 
 public class StudentAdapter extends RecyclerView.Adapter<StudentAdapter.ViewHolder> {
 
-    private Context         context;
-    private List<Student>   danhSach;
+    private Context context;
+    private List<Student> danhSach;
     private OnItemClickListener listener;
 
-    // Interface click
+    // Interface dùng để bắt sự kiện click vào từng dòng sinh viên
     public interface OnItemClickListener {
         void onItemClick(Student student);
     }
 
     public StudentAdapter(Context context, List<Student> danhSach, OnItemClickListener listener) {
-        this.context   = context;
-        this.danhSach  = danhSach;
-        this.listener  = listener;
+        this.context = context;
+        this.danhSach = danhSach;
+        this.listener = listener;
     }
 
     @NonNull
@@ -42,26 +42,50 @@ public class StudentAdapter extends RecyclerView.Adapter<StudentAdapter.ViewHold
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         Student student = danhSach.get(position);
 
+        // Đổ dữ liệu text cơ bản lên view
         holder.tvName.setText(student.getName());
-        holder.tvId.setText("MSSV: " + student.getId());
+
+        // ĐỒNG BỘ NODE.JS: Thay getId() thành getStudentCode() để hiển thị mã SV đẹp (ví dụ: SV001)
+        holder.tvId.setText("MSSV: " + student.getStudentCode());
         holder.tvClass.setText("Lớp: " + student.getClassName());
 
-        // Avatar chữ cái đầu
-        String firstChar = student.getName() != null && !student.getName().isEmpty()
-                ? String.valueOf(student.getName().charAt(0)).toUpperCase()
-                : "?";
-        holder.tvAvatar.setText(firstChar);
+        // XỬ LÝ LẤY CHỮ CÁI ĐẦU TIÊN CỦA TỪ CUỐI CÙNG TRONG TÊN
+        String fullName = student.getName();
+        String firstLetter = "?";
 
-        // Màu avatar ngẫu nhiên theo vị trí
-        // Màu avatar ngẫu nhiên theo vị trí
-        String[] colors = {"#E53935", "#8E24AA", "#1E88E5",
-                "#00897B", "#F4511E", "#6D4C41"}; // <-- Đã đổi thành String[]
-        holder.tvAvatar.getBackground().setTint(
-                android.graphics.Color.parseColor(colors[position % colors.length])
-        );
+        if (fullName != null && !fullName.trim().isEmpty()) {
+            fullName = fullName.trim();
+            int lastSpaceIndex = fullName.lastIndexOf(" ");
 
-        // Click item
-        holder.itemView.setOnClickListener(v -> listener.onItemClick(student));
+            if (lastSpaceIndex != -1) {
+                // Trường hợp tên có nhiều từ (Ví dụ: "Lê Tuấn Anh" -> lấy "Anh")
+                String lastName = fullName.substring(lastSpaceIndex + 1);
+                if (!lastName.isEmpty()) {
+                    firstLetter = String.valueOf(lastName.charAt(0)).toUpperCase();
+                }
+            } else {
+                // Trường hợp tên chỉ có đúng 1 từ (Ví dụ: "Khoa" -> lấy chữ "K")
+                firstLetter = String.valueOf(fullName.charAt(0)).toUpperCase();
+            }
+        }
+
+        // Hiển thị chữ cái đã bóc tách lên khung tròn avatar
+        holder.tvAvatar.setText(firstLetter);
+
+        // Đổ màu nền ngẫu nhiên/tuần hoàn cho vòng tròn avatar theo vị trí item
+        String[] colors = {"#E53935", "#8E24AA", "#1E88E5", "#00897B", "#F4511E", "#6D4C41"};
+        if (holder.tvAvatar.getBackground() != null) {
+            holder.tvAvatar.getBackground().setTint(
+                    android.graphics.Color.parseColor(colors[position % colors.length])
+            );
+        }
+
+        // Bắt sự kiện click vào item để chuyển sang trang chi tiết
+        holder.itemView.setOnClickListener(v -> {
+            if (listener != null) {
+                listener.onItemClick(student);
+            }
+        });
     }
 
     @Override
@@ -69,7 +93,7 @@ public class StudentAdapter extends RecyclerView.Adapter<StudentAdapter.ViewHold
         return danhSach != null ? danhSach.size() : 0;
     }
 
-    // Cập nhật danh sách khi search
+    // Hàm cập nhật lại danh sách dữ liệu và làm mới giao diện khi tìm kiếm (Local Search)
     public void updateList(List<Student> newList) {
         this.danhSach = newList;
         notifyDataSetChanged();

@@ -13,7 +13,11 @@ public class LoginResponse {
     @SerializedName("username")
     private String username;
 
-    public boolean isSuccess()   { return success; }
-    public String getMessage()   { return message; }
-    public String getUsername()  { return username; }
+    @SerializedName("token")
+    private String token;
+
+    public boolean isSuccess()  { return success; }
+    public String getMessage()  { return message; }
+    public String getUsername() { return username; }
+    public String getToken()    { return token; }
 }

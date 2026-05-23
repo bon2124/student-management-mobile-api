@@ -54,6 +54,7 @@
             android:orientation="vertical"
             android:padding="16dp">
 
+            <!-- Mã sinh viên -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -78,6 +79,7 @@
                 android:textColorHint="#94A3B8"
                 android:textSize="14sp" />
 
+            <!-- Họ và tên -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -102,6 +104,7 @@
                 android:textColorHint="#94A3B8"
                 android:textSize="14sp" />
 
+            <!-- Tuổi -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -126,6 +129,7 @@
                 android:textColorHint="#94A3B8"
                 android:textSize="14sp" />
 
+            <!-- Email -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -150,6 +154,7 @@
                 android:textColorHint="#94A3B8"
                 android:textSize="14sp" />
 
+            <!-- Lớp / Khoa -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -170,6 +175,7 @@
                 android:paddingHorizontal="12dp"
                 android:spinnerMode="dropdown" />
 
+            <!-- Địa chỉ -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -194,6 +200,7 @@
                 android:textColorHint="#94A3B8"
                 android:textSize="14sp" />
 
+            <!-- Số điện thoại -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -218,6 +225,7 @@
                 android:textColorHint="#94A3B8"
                 android:textSize="14sp" />
 
+            <!-- Ngày sinh -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -255,6 +263,32 @@
                     app:tint="#757575" />
             </RelativeLayout>
 
+            <!-- GPA -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="GPA (Điểm TB tích lũy)"
+                android:textColor="#1A237E"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:drawableLeft="@drawable/ic_badge"
+                android:drawablePadding="10dp"
+                android:gravity="center_vertical" />
+            <EditText
+                android:id="@+id/etGpa"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="16dp"
+                android:background="@drawable/bg_input_rect"
+                android:hint="Nhập GPA (vd: 3.5)"
+                android:inputType="numberDecimal"
+                android:paddingHorizontal="12dp"
+                android:textColor="#1E293B"
+                android:textColorHint="#94A3B8"
+                android:textSize="14sp" />
+
+            <!-- Giới tính -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
